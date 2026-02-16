@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import chainlit as cl
 from langchain_core.messages import HumanMessage
 
+from data_layer import JsonDataLayer
 from graph.graph import build_graph, QUALITY_THRESHOLD, MAX_ITERATIONS
 
 # ── Initialisation ───────────────────────────────────────────────────
@@ -104,11 +105,33 @@ async def set_starters():
     ]
 
 
+# ── Auth & data layer ────────────────────────────────────────────────
+
+@cl.header_auth_callback
+async def header_auth_callback(headers: dict) -> cl.User:
+    """Auto-authenticate every visitor — no login page."""
+    return cl.User(identifier="default", metadata={"role": "admin"})
+
+
+@cl.data_layer
+def get_data_layer():
+    return JsonDataLayer()
+
+
 # ── Chat lifecycle ───────────────────────────────────────────────────
+
 @cl.on_chat_start
 async def start():
     cl.user_session.set("graph", APP_GRAPH)
     cl.user_session.set("config", {"configurable": {"thread_id": cl.context.session.id}})
+    cl.user_session.set("processed_ids", set())
+
+
+@cl.on_chat_resume
+async def on_chat_resume(thread: dict):
+    """Restore session state when a user reopens a past conversation."""
+    cl.user_session.set("graph", APP_GRAPH)
+    cl.user_session.set("config", {"configurable": {"thread_id": thread["id"]}})
     cl.user_session.set("processed_ids", set())
 
 
