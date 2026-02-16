@@ -10,6 +10,7 @@ The researcher:
 from __future__ import annotations
 
 import os
+import re
 from dotenv import load_dotenv
 
 from langchain_core.messages import AIMessage
@@ -45,45 +46,37 @@ Focus on:
 - Competitor benchmarks
 - Relevant regulations or standards
 
-Return ONLY a numbered list of search queries (max 5). No extra text.
-
-### Plan
-{plan}
-"""
+Return ONLY a numbered list of search queries (max 5). No extra text."""
 
 SYNTHESIS_PROMPT = """\
 You are a research analyst. Summarise the following raw search results \
 into a concise **Research Brief** that a proposal writer can reference.
 
 Organise by topic. Include specific data points, statistics, and quotes \
-where available. Cite sources with URLs.
+where available. Cite sources with URLs."""
 
-### Raw Results
-{raw_results}
-"""
+_query_prompt = ChatPromptTemplate.from_messages([
+    ("system", QUERY_EXTRACTION_PROMPT),
+    ("human", "### Plan\n{plan}"),
+])
 
-_query_prompt = ChatPromptTemplate.from_messages(
-    [("system", QUERY_EXTRACTION_PROMPT)]
-)
-
-_synthesis_prompt = ChatPromptTemplate.from_messages(
-    [("system", SYNTHESIS_PROMPT)]
-)
+_synthesis_prompt = ChatPromptTemplate.from_messages([
+    ("system", SYNTHESIS_PROMPT),
+    ("human", "### Raw Results\n{raw_results}"),
+])
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
 def _extract_queries(llm_output: str) -> list[str]:
     """Extract up to 5 numbered queries using regex."""
-    import re
-    # Matches lines starting with "1.", "1)", "1-" etc.
-    queries = re.findall(r"^\s*\d+[\.\)\-]\s*(.+)$", llm_output, re.MULTILINE)
+    queries = re.findall(r"^\s*\d+[.\)\-]\s*(.+)$", llm_output, re.MULTILINE)
     return queries[:5]
 
 
 def _search_tavily(queries: list[str]) -> str:
     """Run queries through Tavily and return concatenated results."""
     client = _get_tavily_client()
-    results = []
+    results: list[str] = []
 
     for q in queries:
         try:
@@ -101,13 +94,14 @@ def _search_tavily(queries: list[str]) -> str:
 # ── Graph node ───────────────────────────────────────────────────────
 def researcher_node(state: AgentState) -> dict:
     """LangGraph node – researches the plan and returns a research brief."""
-    llm = get_llm(temperature=0.2)
+    llm = get_llm(model="openai/gpt-oss-120b", temperature=1)
     plan = state.get("plan", "")
 
     if not plan:
         return {
             "messages": [AIMessage(content="No plan provided to research.")],
             "research_data": "",
+            "search_queries": [],
         }
 
     # Step 1: Extract queries from the plan
@@ -124,9 +118,7 @@ def researcher_node(state: AgentState) -> dict:
     raw_results = _search_tavily(queries)
 
     # Step 3: Synthesise
-    synthesis_messages = _synthesis_prompt.format_messages(
-        raw_results=raw_results
-    )
+    synthesis_messages = _synthesis_prompt.format_messages(raw_results=raw_results)
     synthesis = llm.invoke(synthesis_messages)
     brief = (
         synthesis.content
@@ -137,4 +129,5 @@ def researcher_node(state: AgentState) -> dict:
     return {
         "messages": [AIMessage(content=brief)],
         "research_data": brief,
+        "search_queries": queries,
     }

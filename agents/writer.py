@@ -12,7 +12,7 @@ from utils.templates import PROPOSAL_TEMPLATES
 
 def writer_node(state: AgentState) -> dict:
     """LangGraph node – generates the proposal draft."""
-    llm = get_llm(temperature=0.4)
+    llm = get_llm(model="openai/gpt-oss-120b", temperature=0.4)
     
     plan = state.get("plan", "")
     research_data = state.get("research_data", "")

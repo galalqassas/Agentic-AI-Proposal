@@ -22,12 +22,16 @@ class AgentState(TypedDict):
         Structured plan produced by the Planner agent.
     research_data : str
         Contextual research gathered by the Research agent.
+    search_queries : list[str]
+        Search queries used by the Researcher agent (surfaced in UI).
     draft : str
         Current proposal draft.
     critique : str
         Evaluator feedback on the draft.
     score : float
         Numeric quality score assigned by the Evaluator.
+    dimension_scores : dict
+        Per-dimension scores from the Evaluator (Clarity, etc.).
     revision_count : int
         How many refinement iterations have occurred.
     user_feedback : str
@@ -39,8 +43,10 @@ class AgentState(TypedDict):
     proposal_type: str
     plan: str
     research_data: str
+    search_queries: list[str]
     draft: str
     critique: str
     score: float
+    dimension_scores: dict
     revision_count: int
     user_feedback: str

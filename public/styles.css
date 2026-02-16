@@ -1,0 +1,113 @@
+/* ============================================================
+   Proposal Agent — Custom Chainlit Stylesheet
+   ============================================================
+   Enhances the default Chainlit UI with polished typography,
+   smoother animations, and refined component styling.
+   ============================================================ */
+
+/* ── Global smoothing ──────────────────────────────────────── */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Message styling ───────────────────────────────────────── */
+.cl-message {
+  transition: background-color 0.2s ease;
+}
+
+/* ── Step (agent) cards ────────────────────────────────────── */
+.cl-step {
+  border-radius: 0.75rem;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.cl-step:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Starter cards polish ──────────────────────────────────── */
+.cl-starter {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.cl-starter:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Action buttons ────────────────────────────────────────── */
+.cl-action {
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cl-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Markdown content inside messages ──────────────────────── */
+.cl-message h1,
+.cl-message h2,
+.cl-message h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cl-message table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.cl-message table th,
+.cl-message table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.cl-message table th {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Scrollbar styling (dark mode) ─────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ── File download elements ────────────────────────────────── */
+.cl-file {
+  border-radius: 0.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.cl-file:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

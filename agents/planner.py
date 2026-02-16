@@ -56,7 +56,7 @@ _prompt = ChatPromptTemplate.from_messages(
 
 def planner_node(state: AgentState) -> dict:
     """LangGraph node – runs the planner and returns updated state."""
-    llm = get_llm(temperature=0.3)
+    llm = get_llm(model="openai/gpt-oss-120b", temperature=0.3)
 
     # Render the prompt, then invoke the LLM directly
     messages = _prompt.format_messages(task=state["task"])

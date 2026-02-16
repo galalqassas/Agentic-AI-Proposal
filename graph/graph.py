@@ -23,9 +23,9 @@ from agents.output import output_node
 
 load_dotenv()
 
-# Configuration from .env
+# Configuration
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", 5))
-QUALITY_THRESHOLD = float(os.getenv("QUALITY_THRESHOLD", 8.0))
+QUALITY_THRESHOLD = 9.5
 
 def route_evaluator(state: AgentState) -> str:
     """Determine next step based on score and iteration count."""

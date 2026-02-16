@@ -1,14 +1,22 @@
-# Welcome to Chainlit! 🚀🤖
+# 🚀 Proposal Agent
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+Your AI-powered specialist for crafting **high-quality, research-backed proposals**.
 
-## Useful Links 🔗
+---
 
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
+### How It Works
 
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
+| Step | Agent             | What Happens                                          |
+| ---- | ----------------- | ----------------------------------------------------- |
+| 1    | 📝 **Planner**    | Analyses your request and builds a structured outline |
+| 2    | 🔍 **Researcher** | Searches the web for data, trends, and benchmarks     |
+| 3    | ✍️ **Writer**     | Drafts a complete, professional proposal              |
+| 4    | 🧐 **Evaluator**  | Scores the draft on 5 dimensions and refines it       |
 
-## Welcome screen
+### Supported Proposal Types
 
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+Grant · Business · Technical · Sales · Project · Research · Partnership
+
+---
+
+**Choose a starter below or describe your proposal to get started!**

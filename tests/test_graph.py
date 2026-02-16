@@ -88,13 +88,16 @@ class TestGraphIntegration:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
         }
 
-        result = graph.invoke(initial_state)
+        config = {"configurable": {"thread_id": "test-full-pipeline"}}
+        result = graph.invoke(initial_state, config)
 
         # ── Assertions ──
         assert result["plan"] != ""
@@ -134,11 +137,13 @@ class TestGraphIntegration:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
-        })
+        }, {"configurable": {"thread_id": "test-state-flow"}})
 
         # The plan should be set by planner, then researcher uses it
         assert result["plan"] == MOCK_PLANNER_OUTPUT
