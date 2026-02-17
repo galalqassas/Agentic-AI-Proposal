@@ -12,9 +12,9 @@ from langchain_core.messages import AIMessage
 
 from agents.researcher import (
     researcher_node,
-    _extract_queries,
     _search_tavily,
 )
+from agents.models import SearchQueries
 
 # ── Sample data ──────────────────────────────────────────────────────
 SAMPLE_PLAN = """\
@@ -32,11 +32,13 @@ Business
 3. Proposed Solution
 """
 
-SAMPLE_QUERIES_LLM_OUTPUT = """\
-1. Acme Corp company overview and recent news
-2. AI consulting market size 2026
-3. Top AI consulting firms pricing comparison
-"""
+SAMPLE_QUERIES = SearchQueries(
+    queries=[
+        "Acme Corp company overview and recent news",
+        "AI consulting market size 2026",
+        "Top AI consulting firms pricing comparison",
+    ]
+)
 
 SAMPLE_TAVILY_RESPONSE = {
     "results": [
@@ -67,33 +69,6 @@ Source: https://example.com/ai-market
 
 
 # ── Unit tests ───────────────────────────────────────────────────────
-class TestExtractQueries:
-    """Tests for the _extract_queries helper."""
-
-    def test_parses_numbered_list(self):
-        queries = _extract_queries(SAMPLE_QUERIES_LLM_OUTPUT)
-        assert len(queries) == 3
-        assert "Acme Corp company overview" in queries[0]
-
-    def test_caps_at_five(self):
-        text = "\n".join(f"{i}. query {i}" for i in range(1, 10))
-        queries = _extract_queries(text)
-        assert len(queries) <= 5
-
-    def test_handles_empty_input(self):
-        assert _extract_queries("") == []
-
-    def test_handles_dash_prefix(self):
-        text = "1- First query\n2- Second query"
-        queries = _extract_queries(text)
-        assert len(queries) == 2
-
-    def test_handles_paren_prefix(self):
-        text = "1) First query\n2) Second query"
-        queries = _extract_queries(text)
-        assert len(queries) == 2
-
-
 class TestSearchTavily:
     """Tests for the _search_tavily helper (mocked)."""
 
@@ -136,12 +111,12 @@ class TestResearcherNode:
     @patch("agents.researcher.get_llm")
     def test_returns_research_data(self, mock_get_llm, mock_search):
         """researcher_node should return research_data in state."""
-        # LLM is called twice: query extraction, then synthesis
+        # LLM is called twice: structured (queries) + free-form (synthesis)
         mock_llm = MagicMock()
-        mock_llm.invoke.side_effect = [
-            AIMessage(content=SAMPLE_QUERIES_LLM_OUTPUT),
-            AIMessage(content=SAMPLE_SYNTHESIS),
-        ]
+        mock_structured = MagicMock()
+        mock_structured.invoke.return_value = SAMPLE_QUERIES
+        mock_llm.with_structured_output.return_value = mock_structured
+        mock_llm.invoke.return_value = AIMessage(content=SAMPLE_SYNTHESIS)
         mock_get_llm.return_value = mock_llm
 
         mock_search.return_value = "Raw search results here"
@@ -156,6 +131,7 @@ class TestResearcherNode:
             "critique": "",
             "score": 0.0,
             "revision_count": 0,
+            "questions_for_user": [],
         }
 
         result = researcher_node(state)
@@ -178,6 +154,7 @@ class TestResearcherNode:
             "critique": "",
             "score": 0.0,
             "revision_count": 0,
+            "questions_for_user": [],
         }
 
         result = researcher_node(state)
@@ -188,12 +165,14 @@ class TestResearcherNode:
     @patch("agents.researcher._search_tavily")
     @patch("agents.researcher.get_llm")
     def test_calls_tavily_with_extracted_queries(self, mock_get_llm, mock_search):
-        """Verify Tavily is called after query extraction."""
+        """Verify Tavily is called after structured query extraction."""
+        queries = SearchQueries(queries=["test query one", "test query two"])
+
         mock_llm = MagicMock()
-        mock_llm.invoke.side_effect = [
-            AIMessage(content="1. test query one\n2. test query two"),
-            AIMessage(content="Synthesised brief"),
-        ]
+        mock_structured = MagicMock()
+        mock_structured.invoke.return_value = queries
+        mock_llm.with_structured_output.return_value = mock_structured
+        mock_llm.invoke.return_value = AIMessage(content="Synthesised brief")
         mock_get_llm.return_value = mock_llm
         mock_search.return_value = "Raw results"
 
@@ -207,6 +186,7 @@ class TestResearcherNode:
             "critique": "",
             "score": 0.0,
             "revision_count": 0,
+            "questions_for_user": [],
         }
 
         researcher_node(state)
@@ -215,3 +195,32 @@ class TestResearcherNode:
         # Should pass extracted queries
         queries_arg = mock_search.call_args[0][0]
         assert len(queries_arg) == 2
+
+    @patch("agents.researcher._search_tavily")
+    @patch("agents.researcher.get_llm")
+    def test_uses_structured_output_for_queries(self, mock_get_llm, mock_search):
+        """Verify with_structured_output is called with SearchQueries."""
+        mock_llm = MagicMock()
+        mock_structured = MagicMock()
+        mock_structured.invoke.return_value = SearchQueries(queries=["q1"])
+        mock_llm.with_structured_output.return_value = mock_structured
+        mock_llm.invoke.return_value = AIMessage(content="Brief")
+        mock_get_llm.return_value = mock_llm
+        mock_search.return_value = "Results"
+
+        state = {
+            "messages": [],
+            "task": "Test",
+            "proposal_type": "Business",
+            "plan": "### Research Needed\n- topic",
+            "research_data": "",
+            "draft": "",
+            "critique": "",
+            "score": 0.0,
+            "revision_count": 0,
+            "questions_for_user": [],
+        }
+
+        researcher_node(state)
+
+        mock_llm.with_structured_output.assert_called_once_with(SearchQueries)

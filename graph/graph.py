@@ -1,10 +1,11 @@
 """LangGraph graph construction.
 
 Complete pipeline:
-START → planner → researcher → [INTERRUPT] → writer → evaluator → [condition] → output → END
-                                                ↑           ↓
-                                                └───────────┘
-                                              (refinement loop)
+START → planner → [condition] → researcher → [INTERRUPT] → writer → evaluator → [condition] → output → END
+                       ↓                                      ↑           ↓
+                  (questions?)                                └───────────┘
+                       ↓                                    (refinement loop)
+                 [INTERRUPT]
 """
 
 from __future__ import annotations
@@ -25,16 +26,31 @@ load_dotenv()
 
 # Configuration
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", 5))
-QUALITY_THRESHOLD = 9.5
+QUALITY_THRESHOLD = 9.0
+
+
+def route_after_planner(state: AgentState) -> str:
+    """If the planner has questions for the user, interrupt; else research."""
+    questions = state.get("questions_for_user", [])
+    if questions:
+        return "ask_user"
+    return "researcher"
+
 
 def route_evaluator(state: AgentState) -> str:
     """Determine next step based on score and iteration count."""
     score = state.get("score", 0.0)
     revisions = state.get("revision_count", 0)
-    
+
     if score >= QUALITY_THRESHOLD or revisions >= MAX_ITERATIONS:
         return "output"
     return "writer"
+
+
+def _ask_user_node(state: AgentState) -> dict:
+    """No-op node that acts as an interrupt point for planner questions."""
+    return {}
+
 
 def build_graph() -> StateGraph:
     """Build and compile the proposal agent graph."""
@@ -45,6 +61,7 @@ def build_graph() -> StateGraph:
 
     # Add nodes
     graph.add_node("planner", planner_node)
+    graph.add_node("ask_user", _ask_user_node)
     graph.add_node("researcher", researcher_node)
     graph.add_node("writer", writer_node)
     graph.add_node("evaluator", evaluator_node)
@@ -52,10 +69,22 @@ def build_graph() -> StateGraph:
 
     # Add edges
     graph.add_edge(START, "planner")
-    graph.add_edge("planner", "researcher")
+
+    # After planner: conditionally ask user or proceed
+    graph.add_conditional_edges(
+        "planner",
+        route_after_planner,
+        {
+            "ask_user": "ask_user",
+            "researcher": "researcher",
+        }
+    )
+
+    # After user answers, go to researcher
+    graph.add_edge("ask_user", "researcher")
     graph.add_edge("researcher", "writer")
     graph.add_edge("writer", "evaluator")
-    
+
     # Conditional edge
     graph.add_conditional_edges(
         "evaluator",
@@ -65,11 +94,11 @@ def build_graph() -> StateGraph:
             "writer": "writer"
         }
     )
-    
+
     graph.add_edge("output", END)
 
-    # Compile with checkpointer and interrupt after researcher for HITL
+    # Compile with checkpointer and interrupt points for HITL
     return graph.compile(
         checkpointer=checkpointer,
-        interrupt_after=["researcher"]
+        interrupt_after=["ask_user", "researcher"]
     )

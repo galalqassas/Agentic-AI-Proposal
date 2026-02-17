@@ -18,6 +18,8 @@ def writer_node(state: AgentState) -> dict:
     research_data = state.get("research_data", "")
     proposal_type = state.get("proposal_type", "General")
     user_feedback = state.get("user_feedback", "")
+    critique = state.get("critique", "")
+    revision_count = state.get("revision_count", 0)
     
     # Select template (fallback to General if type not found)
     template_str = PROPOSAL_TEMPLATES.get(proposal_type, PROPOSAL_TEMPLATES["General"])
@@ -25,6 +27,14 @@ def writer_node(state: AgentState) -> dict:
     # If there is user feedback, prepend it to the research context
     if user_feedback:
         research_data = f"### Additional User Requirements\n{user_feedback}\n\n{research_data}"
+    
+    # If revising, include the evaluator's critique
+    if revision_count > 0 and critique:
+        research_data = (
+            f"### Evaluator Feedback (Revision {revision_count})\n"
+            f"Address these issues in this revision:\n{critique}\n\n"
+            f"{research_data}"
+        )
     
     # We can use a simple template here since the instructions are embedded
     prompt = ChatPromptTemplate.from_template(template_str)

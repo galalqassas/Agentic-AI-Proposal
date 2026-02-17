@@ -13,15 +13,41 @@ from unittest.mock import patch, MagicMock
 from langchain_core.messages import AIMessage
 from graph.graph import build_graph
 from agents.output import OUTPUT_DIR
+from agents.models import PlannerOutput, SearchQueries, EvaluationOutput
 
-# ── Mock responses ───────────────────────────────────────────────────
-MOCK_PLAN = """### Proposal Type\nBusiness\n### Plan\n..."""
-MOCK_QUERIES = "1. query"
+# ── Mock data ────────────────────────────────────────────────────────
+MOCK_PLANNER = PlannerOutput(
+    proposal_type="Business",
+    key_facts=["Client: TestCo"],
+    research_needed=["TestCo background"],
+    proposal_sections=["Executive Summary", "Solution"],
+    questions_for_user=[],
+)
+
+MOCK_QUERIES = SearchQueries(queries=["TestCo background"])
 MOCK_BRIEF = "Research brief"
 MOCK_DRAFT_V1 = "Draft V1"
-MOCK_EVAL_LOW = """### Overall Score\n5.0\n### Critique\nImprove content."""
 MOCK_DRAFT_V2 = "Draft V2"
-MOCK_EVAL_HIGH = """### Overall Score\n9.8\n### Critique\nNone"""
+
+MOCK_EVAL_LOW = EvaluationOutput(
+    clarity=5.0,
+    persuasiveness=5.0,
+    completeness=5.0,
+    structure=5.0,
+    specificity=5.0,
+    overall_score=5.0,
+    critique="Improve content.",
+)
+
+MOCK_EVAL_HIGH = EvaluationOutput(
+    clarity=9.8,
+    persuasiveness=9.8,
+    completeness=9.8,
+    structure=9.8,
+    specificity=9.8,
+    overall_score=9.8,
+    critique="",
+)
 
 
 class TestFullPipeline:
@@ -54,14 +80,16 @@ class TestFullPipeline:
         first to reach the interrupt, then resume to complete the pipeline.
         """
 
-        # 1. Planner
-        mock_planner_llm.return_value.invoke.return_value = AIMessage(content=MOCK_PLAN)
+        # 1. Planner (structured output)
+        mock_p_structured = MagicMock()
+        mock_p_structured.invoke.return_value = MOCK_PLANNER
+        mock_planner_llm.return_value.with_structured_output.return_value = mock_p_structured
 
-        # 2. Researcher (Queries + Synthesis)
-        mock_researcher_llm.return_value.invoke.side_effect = [
-            AIMessage(content=MOCK_QUERIES),
-            AIMessage(content=MOCK_BRIEF),
-        ]
+        # 2. Researcher (structured queries + free-form synthesis)
+        mock_r_structured = MagicMock()
+        mock_r_structured.invoke.return_value = MOCK_QUERIES
+        mock_researcher_llm.return_value.with_structured_output.return_value = mock_r_structured
+        mock_researcher_llm.return_value.invoke.return_value = AIMessage(content=MOCK_BRIEF)
         mock_tavily.return_value = "Raw results"
 
         # 3. Writer (called twice: initial + refinement)
@@ -70,11 +98,10 @@ class TestFullPipeline:
             AIMessage(content=MOCK_DRAFT_V2),
         ]
 
-        # 4. Evaluator (called twice: low score -> high score)
-        mock_evaluator_llm.return_value.invoke.side_effect = [
-            AIMessage(content=MOCK_EVAL_LOW),   # Score 5.0 -> Loop
-            AIMessage(content=MOCK_EVAL_HIGH),  # Score 9.8 -> Exit
-        ]
+        # 4. Evaluator (structured output, called twice: low score -> high score)
+        mock_e_structured = MagicMock()
+        mock_e_structured.invoke.side_effect = [MOCK_EVAL_LOW, MOCK_EVAL_HIGH]
+        mock_evaluator_llm.return_value.with_structured_output.return_value = mock_e_structured
 
         app = build_graph()
         config = {"configurable": {"thread_id": "test-refinement"}}
@@ -91,6 +118,7 @@ class TestFullPipeline:
             "score": 0.0,
             "dimension_scores": {},
             "revision_count": 0,
+            "questions_for_user": [],
         }
 
         # First invoke: runs planner -> researcher, then hits interrupt
@@ -111,7 +139,7 @@ class TestFullPipeline:
 
         # Verify loop execution
         assert mock_writer_llm.return_value.invoke.call_count == 2
-        assert mock_evaluator_llm.return_value.invoke.call_count == 2
+        assert mock_e_structured.invoke.call_count == 2
 
         # Verify output creation
         assert os.path.exists(OUTPUT_DIR)

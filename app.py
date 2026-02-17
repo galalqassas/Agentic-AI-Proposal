@@ -21,11 +21,11 @@ OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Nodes whose events we handle in the stream
-MAJOR_NODES = frozenset({"planner", "researcher", "writer", "evaluator", "output"})
+MAJOR_NODES = frozenset({"planner", "researcher", "writer", "evaluator", "output", "ask_user"})
 
-# Phase labels for the two parent messages
+# Phase labels
 _PHASE1_LABEL = "📋 Planning & researching your proposal…"
-_PHASE2_LABEL = "✍️ Drafting & refining your proposal…"
+_PHASE2_LABEL_WRITING = "✍️ Writing your proposal…"
 
 # Human-readable step names
 _STEP_LABELS = {
@@ -144,9 +144,20 @@ async def main(message: cl.Message):
     state = graph.get_state(config)
 
     if state.next:
-        await graph.aupdate_state(
-            config, {"user_feedback": message.content}, as_node="researcher"
-        )
+        # Check if we're resuming from planner questions (ask_user node)
+        if "ask_user" in state.next:
+            # User answered planner questions — merge into task
+            existing_task = state.values.get("task", "")
+            updated_task = f"{existing_task}\n\nAdditional info from user: {message.content}"
+            await graph.aupdate_state(
+                config,
+                {"task": updated_task, "questions_for_user": []},
+                as_node="ask_user",
+            )
+        else:
+            await graph.aupdate_state(
+                config, {"user_feedback": message.content}, as_node="researcher"
+            )
         stream = graph.astream_events(None, config, version="v2")
     else:
         inputs = {
@@ -157,6 +168,7 @@ async def main(message: cl.Message):
             "user_feedback": "",
             "search_queries": [],
             "dimension_scores": {},
+            "questions_for_user": [],
         }
         stream = graph.astream_events(inputs, config, version="v2")
 
@@ -179,14 +191,18 @@ async def main(message: cl.Message):
                 continue
             processed.add(run_id)
 
+            # Skip the no-op ask_user node in the UI
+            if name == "ask_user":
+                continue
+
             # Phase 1 parent (planner / researcher)
             if name in ("planner", "researcher") and root_msg is None:
                 root_msg = cl.Message(content=_PHASE1_LABEL)
                 await root_msg.send()
 
-            # Phase 2 parent (writer / evaluator loop)
-            if name == "writer" and (root_msg is None or root_msg.content == _PHASE1_LABEL):
-                root_msg = cl.Message(content=_PHASE2_LABEL)
+            # Phase 2 parent (writer / evaluator)
+            if name in ("writer", "evaluator") and root_msg is None:
+                root_msg = cl.Message(content=_PHASE2_LABEL_WRITING)
                 await root_msg.send()
                 attempt = 1
 
@@ -212,6 +228,14 @@ async def main(message: cl.Message):
 
         # ── Node End ─────────────────────────────────────────────
         elif kind == "on_chain_end" and name in MAJOR_NODES:
+            # Handle ask_user node — show planner questions
+            if name == "ask_user":
+                final_state = graph.get_state(config)
+                questions = final_state.values.get("questions_for_user", [])
+                if questions:
+                    await _show_planner_questions(questions)
+                continue
+
             if name not in active_steps:
                 continue
 
@@ -230,11 +254,43 @@ async def main(message: cl.Message):
                 await _end_step(step)
 
             elif name == "evaluator":
-                await _finish_evaluator(step, output, root_msg)
+                await _finish_evaluator(step, output)
                 attempt += 1
 
             elif name == "output":
                 await _finish_output(step, output)
+
+    # ── After stream: display the final proposal ─────────────────
+    final_state = graph.get_state(config)
+    draft = final_state.values.get("draft", "")
+
+    # Only show when graph has fully completed (no pending interrupt)
+    if draft and not final_state.next:
+        elements = [
+            cl.File(
+                name="proposal_final.md",
+                content=draft.encode("utf-8"),
+                display="inline",
+            )
+        ]
+        await cl.Message(
+            content=f"# 📄 Final Proposal\n\n{draft}",
+            elements=elements,
+        ).send()
+
+
+# ── Planner questions helper ─────────────────────────────────────────
+async def _show_planner_questions(questions: list[str]) -> None:
+    """Display the planner's questions to the user for HITL input."""
+    q_list = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
+    await cl.Message(
+        content=(
+            "## \u2753 A few quick questions before I proceed\n\n"
+            f"{q_list}\n\n"
+            "Please answer the questions above and I'll incorporate "
+            "your input into the proposal."
+        ),
+    ).send()
 
 
 # ── Node-end helpers ─────────────────────────────────────────────────
@@ -277,11 +333,7 @@ async def _finish_researcher(step: cl.Step, output: dict) -> None:
     ).send()
 
 
-async def _finish_evaluator(
-    step: cl.Step,
-    output: dict,
-    root_msg: cl.Message | None,
-) -> None:
+async def _finish_evaluator(step: cl.Step, output: dict) -> None:
     """Render the scorecard inside the evaluator step."""
     score = output.get("score", 0.0)
     critique = output.get("critique", "")
@@ -304,45 +356,11 @@ async def _finish_evaluator(
     step.output = scorecard
     await _end_step(step)
 
-    # Update the parent message with a brief status
-    if root_msg:
-        status = (
-            f"✅ Score **{score}/10** — proposal accepted!"
-            if score >= QUALITY_THRESHOLD
-            else f"🔄 Score **{score}/10** — revising (attempt {revision_count + 1})…"
-        )
-        root_msg.content = f"{_PHASE2_LABEL}\n\n{status}"
-        await root_msg.update()
-
 
 async def _finish_output(step: cl.Step, output: dict) -> None:
-    """Send the final proposal as a standalone top-level message."""
+    """Finalise the output step (proposal display happens after the stream)."""
     step.output = "Saved to disk."
     await _end_step(step)
-
-    # Retrieve the draft from the graph state via the output node's return
-    # (output node doesn't return draft, so read it from the step's graph state)
-    # We access it via the session graph state instead.
-    graph = cl.user_session.get("graph")
-    config = cl.user_session.get("config")
-    final_state = graph.get_state(config)
-    draft = final_state.values.get("draft", "")
-
-    if not draft:
-        return
-
-    elements = [
-        cl.File(
-            name="proposal_final.md",
-            content=draft.encode("utf-8"),
-            display="inline",
-        )
-    ]
-
-    await cl.Message(
-        content=f"# 📄 Final Proposal\n\n{draft}",
-        elements=elements,
-    ).send()
 
 
 # ── Action callbacks ─────────────────────────────────────────────────

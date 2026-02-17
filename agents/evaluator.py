@@ -1,5 +1,7 @@
 """Evaluator agent – scores the proposal draft and provides critique.
 
+Uses Pydantic structured output to return validated scores and feedback.
+
 The evaluator:
 1. Reads the draft and the original task.
 2. Scores it on 5 dimensions (0-10).
@@ -9,10 +11,10 @@ The evaluator:
 
 from __future__ import annotations
 
-import re
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 
+from agents.models import EvaluationOutput
 from graph.state import AgentState
 from utils.llm import get_llm
 
@@ -20,37 +22,46 @@ from utils.llm import get_llm
 SCORE_DIMENSIONS = ("Clarity", "Persuasiveness", "Completeness", "Structure", "Specificity")
 
 EVALUATOR_SYSTEM_PROMPT = """\
-You are a strict proposal evaluator. Review the draft below against the original task.
+You are an expert Proposal Evaluator with deep experience reviewing \
+proposals across industries. Your evaluation must be rigorous, fair, \
+and actionable.
 
-Score the draft from 0 to 10 on these 5 dimensions:
-1. Clarity (Clear language, easy to read)
-2. Persuasiveness (Compelling arguments, benefits-focused)
-3. Completeness (Addresses all task requirements)
-4. Structure (Logical flow, proper formatting)
-5. Specificity (Customised to the client/industry, not generic)
+## Scoring Rubric (0-10 for each dimension)
 
-Output format (exactly as shown):
-### Scores
-Clarity: <score>
-Persuasiveness: <score>
-Completeness: <score>
-Structure: <score>
-Specificity: <score>
+**Clarity** — Is the language precise and professional? Can a non-expert \
+understand the core message? (9-10: flawless prose, zero ambiguity; \
+5-6: mostly clear with some jargon issues; 0-3: confusing or poorly written)
 
-### Overall Score
-<average_score>
+**Persuasiveness** — Does the proposal make a compelling case? Are benefits \
+quantified? Is there a clear value proposition? (9-10: impossible to say no; \
+5-6: reasonable but missing urgency; 0-3: weak or unconvincing)
 
-### Critique
-(Only if Overall Score < 9.5)
-Provide exactly 3 specific improvements needed. 
-If the Overall Score is 9.5 or higher, output: None
-"""
+**Completeness** — Does it address every requirement from the original task? \
+Are all necessary sections present? (9-10: comprehensive, nothing missing; \
+5-6: covers basics but gaps exist; 0-3: major sections missing)
+
+**Structure** — Is there a logical flow? Are headings, transitions, and \
+formatting professional? (9-10: textbook structure; 5-6: adequate but \
+could be reordered; 0-3: disorganised)
+
+**Specificity** — Is the content tailored to the client/industry with \
+real data, names, and numbers? (9-10: deeply personalised; 5-6: some \
+customisation; 0-3: generic boilerplate)
+
+## Rules
+- Calculate overall_score as the arithmetic mean of all 5 dimension scores.
+- If overall_score >= 9.0, set critique to an empty string.
+- If overall_score < 9.0, provide exactly 3 specific, actionable \
+improvements the writer should make in the next revision.
+- Be strict but constructive — every point of critique should explain \
+both *what* is wrong and *how* to fix it."""
 
 
 # ── Graph node ───────────────────────────────────────────────────────
 def evaluator_node(state: AgentState) -> dict:
     """LangGraph node – scores the draft and returns structured feedback."""
     llm = get_llm(model="openai/gpt-oss-120b", temperature=0.1)
+    structured_llm = llm.with_structured_output(EvaluationOutput)
 
     draft = state.get("draft", "")
     task = state.get("task", "")
@@ -60,53 +71,22 @@ def evaluator_node(state: AgentState) -> dict:
         ("human", f"Task: {task}\n\nDraft:\n{draft}"),
     ])
 
-    response = llm.invoke(prompt.format_messages())
-    content = response.content if hasattr(response, "content") else str(response)
+    result: EvaluationOutput = structured_llm.invoke(prompt.format_messages())
 
-    score = _extract_overall_score(content)
-    critique = _extract_critique(content)
-    dimension_scores = _extract_dimension_scores(content)
+    dimension_scores = {
+        "Clarity": result.clarity,
+        "Persuasiveness": result.persuasiveness,
+        "Completeness": result.completeness,
+        "Structure": result.structure,
+        "Specificity": result.specificity,
+    }
 
     current_revisions = state.get("revision_count", 0)
 
     return {
-        "messages": [AIMessage(content=f"Evaluated draft. Score: {score}/10")],
-        "score": score,
-        "critique": critique,
+        "messages": [AIMessage(content=f"Evaluated draft. Score: {result.overall_score}/10")],
+        "score": result.overall_score,
+        "critique": result.critique,
         "dimension_scores": dimension_scores,
         "revision_count": current_revisions + 1,
     }
-
-
-# ── Helpers ──────────────────────────────────────────────────────────
-def _extract_overall_score(text: str) -> float:
-    """Extract the overall score from the evaluation output."""
-    match = re.search(r"### Overall Score[:\s]*(\d+(\.\d+)?)", text, re.IGNORECASE)
-    if match:
-        try:
-            return float(match.group(1))
-        except ValueError:
-            pass
-    return 0.0
-
-
-def _extract_critique(text: str) -> str:
-    """Extract the critique section."""
-    match = re.search(r"### Critique\s*(.*)", text, re.IGNORECASE | re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return ""
-
-
-def _extract_dimension_scores(text: str) -> dict:
-    """Extract individual dimension scores into a dict.
-
-    Returns a mapping like ``{"Clarity": 8.0, "Persuasiveness": 7.5, ...}``.
-    Missing dimensions default to ``0.0``.
-    """
-    scores: dict[str, float] = {}
-    for dim in SCORE_DIMENSIONS:
-        pattern = rf"{dim}[:\s]*(\d+(?:\.\d+)?)"
-        match = re.search(pattern, text, re.IGNORECASE)
-        scores[dim] = float(match.group(1)) if match else 0.0
-    return scores

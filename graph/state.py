@@ -36,6 +36,8 @@ class AgentState(TypedDict):
         How many refinement iterations have occurred.
     user_feedback : str
         Input from user during human-in-the-loop steps.
+    questions_for_user : list[str]
+        Questions the Planner needs answered (unsearchable info only).
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
@@ -50,3 +52,4 @@ class AgentState(TypedDict):
     dimension_scores: dict
     revision_count: int
     user_feedback: str
+    questions_for_user: list[str]
