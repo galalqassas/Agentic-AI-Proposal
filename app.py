@@ -121,6 +121,7 @@ async def start():
     cl.user_session.set("graph", APP_GRAPH)
     cl.user_session.set("config", {"configurable": {"thread_id": cl.context.session.id}})
     cl.user_session.set("processed_ids", set())
+    cl.user_session.set("awaiting_planner_answers", False)
 
 
 @cl.on_chat_resume
@@ -129,6 +130,7 @@ async def on_chat_resume(thread: dict):
     cl.user_session.set("graph", APP_GRAPH)
     cl.user_session.set("config", {"configurable": {"thread_id": thread["id"]}})
     cl.user_session.set("processed_ids", set())
+    cl.user_session.set("awaiting_planner_answers", False)
 
 
 @cl.on_message
@@ -140,8 +142,11 @@ async def main(message: cl.Message):
     state = graph.get_state(config)
 
     if state.next:
-        # Check if we're resuming from planner questions (ask_user node)
-        if "ask_user" in state.next:
+        # Check if we're resuming from planner questions (ask_user node).
+        # We use a session flag because after ask_user interrupts,
+        # state.next is ("researcher",) — not ("ask_user",).
+        if cl.user_session.get("awaiting_planner_answers"):
+            cl.user_session.set("awaiting_planner_answers", False)
             # User answered planner questions — merge into task
             existing_task = state.values.get("task", "")
             updated_task = f"{existing_task}\n\nAdditional info from user: {message.content}"
@@ -222,6 +227,9 @@ async def main(message: cl.Message):
                 questions = final_state.values.get("questions_for_user", [])
                 if questions:
                     await _show_planner_questions(questions)
+                    # Mark that the next user message is an answer to planner
+                    # questions, not researcher feedback.
+                    cl.user_session.set("awaiting_planner_answers", True)
                 continue
 
             if name not in active_steps:
