@@ -124,6 +124,7 @@ async def start():
     cl.user_session.set("config", {"configurable": {"thread_id": cl.context.session.id}})
     cl.user_session.set("processed_ids", set())
     cl.user_session.set("awaiting_planner_answers", False)
+    cl.user_session.set("is_processing", False)
 
 
 @cl.on_chat_resume
@@ -133,169 +134,192 @@ async def on_chat_resume(thread: dict):
     cl.user_session.set("config", {"configurable": {"thread_id": thread["id"]}})
     cl.user_session.set("processed_ids", set())
     cl.user_session.set("awaiting_planner_answers", False)
+    cl.user_session.set("is_processing", False)
 
 
 @cl.on_message
 async def main(message: cl.Message):
     """Stream graph execution with steps nested under parent messages."""
-    graph = cl.user_session.get("graph")
-    config = cl.user_session.get("config")
+    if cl.user_session.get("is_processing"):
+        return
 
-    state = graph.get_state(config)
+    cl.user_session.set("is_processing", True)
+    try:
+        graph = cl.user_session.get("graph")
+        config = cl.user_session.get("config")
 
-    if state.next:
-        # Check if we're resuming from planner questions (ask_user node).
-        # We use a session flag because after ask_user interrupts,
-        # state.next is ("researcher",) — not ("ask_user",).
-        if cl.user_session.get("awaiting_planner_answers"):
-            cl.user_session.set("awaiting_planner_answers", False)
-            # User answered planner questions — merge into task
-            existing_task = state.values.get("task", "")
-            updated_task = f"{existing_task}\n\nAdditional info from user: {message.content}"
-            await graph.aupdate_state(
-                config,
-                {"task": updated_task, "questions_for_user": []},
-                as_node="ask_user",
-            )
-        else:
-            await graph.aupdate_state(
-                config, {"user_feedback": message.content}, as_node="researcher"
-            )
-        stream = graph.astream_events(None, config, version="v2")
-    else:
-        inputs = {
-            "task": message.content,
-            "messages": [HumanMessage(content=message.content)],
-            "revision_count": 0,
-            "score": 0.0,
-            "user_feedback": "",
-            "search_queries": [],
-            "dimension_scores": {},
-            "questions_for_user": [],
-        }
-        stream = graph.astream_events(inputs, config, version="v2")
+        state = graph.get_state(config)
 
-    # ── Session-scoped tracking ──────────────────────────────────
-    active_steps: dict[str, cl.Step] = {}
-    attempt = 1                          # writer/evaluator attempt counter
-
-    async for event in stream:
-        kind = event["event"]
-        name = event["name"]
-        data = event["data"]
-
-        # ── Node Start ───────────────────────────────────────────
-        if kind == "on_chain_start" and name in MAJOR_NODES:
-            run_id = event.get("run_id")
-            processed = cl.user_session.get("processed_ids") or set()
-            cl.user_session.set("processed_ids", processed)
-            if run_id in processed:
-                continue
-            processed.add(run_id)
-
-            # Skip the no-op ask_user node in the UI
-            if name == "ask_user":
-                continue
-
-            # Parent steps directly under the user message
-            if name in ("writer", "evaluator"):
-                attempt = 1
-
-            # Choose label
-            if name == "writer":
-                label = _writer_label(attempt)
-            elif name == "evaluator":
-                label = _evaluator_label(attempt)
+        if state.next:
+            # Check if we're resuming from planner questions (ask_user node).
+            # We use a session flag because after ask_user interrupts,
+            # state.next is ("researcher",) — not ("ask_user",).
+            if cl.user_session.get("awaiting_planner_answers"):
+                cl.user_session.set("awaiting_planner_answers", False)
+                # User answered planner questions — merge into task
+                existing_task = state.values.get("task", "")
+                updated_task = f"{existing_task}\n\nAdditional info from user: {message.content}"
+                await graph.aupdate_state(
+                    config,
+                    {"task": updated_task, "questions_for_user": []},
+                    as_node="ask_user",
+                )
             else:
-                label = _STEP_LABELS.get(name, name.capitalize())
+                # Handle the "Proceed" button case vs actual typed feedback
+                feedback = message.content
+                intent = cl.user_session.get("intent")
+                as_node = "researcher"  # Default: update researcher’s feedback but move to writer
 
-            step = await _make_step(label, message.id)
-            active_steps[name] = step
+                if feedback.startswith("✅ Proceeding"):
+                    feedback = ""
+                elif intent == "reresearch":
+                    # Special case: Loop back to researcher node by updating as 'planner'
+                    as_node = "planner"
+                    cl.user_session.set("intent", None)
+                elif intent == "edit":
+                    # Regular case: feedback is for the writer, proceed normally
+                    cl.user_session.set("intent", None)
 
-        # ── LLM Streaming ────────────────────────────────────────
-        elif kind == "on_chat_model_stream":
-            chunk_content = data["chunk"].content
-            if not chunk_content:
-                continue
-            node = event.get("metadata", {}).get("langgraph_node")
-            if node and node in active_steps:
-                await active_steps[node].stream_token(chunk_content)
+                await graph.aupdate_state(
+                    config, {"user_feedback": feedback}, as_node=as_node
+                )
+            stream = graph.astream_events(None, config, version="v2")
+        else:
+            inputs = {
+                "task": message.content,
+                "messages": [HumanMessage(content=message.content)],
+                "revision_count": 0,
+                "score": 0.0,
+                "user_feedback": "",
+                "search_queries": [],
+                "dimension_scores": {},
+                "questions_for_user": [],
+            }
+            stream = graph.astream_events(inputs, config, version="v2")
 
-        # ── Node End ─────────────────────────────────────────────
-        elif kind == "on_chain_end" and name in MAJOR_NODES:
-            # Handle ask_user node — show planner questions
-            if name == "ask_user":
-                final_state = graph.get_state(config)
-                questions = final_state.values.get("questions_for_user", [])
-                if questions:
-                    await _show_planner_questions(questions)
-                    # Mark that the next user message is an answer to planner
-                    # questions, not researcher feedback.
-                    cl.user_session.set("awaiting_planner_answers", True)
-                continue
+        # ── Session-scoped tracking ──────────────────────────────────
+        active_steps: dict[str, cl.Step] = {}
+        attempt = 1                          # writer/evaluator attempt counter
 
-            if name not in active_steps:
-                continue
+        async for event in stream:
+            kind = event["event"]
+            name = event["name"]
+            data = event["data"]
 
-            step = active_steps.pop(name)
-            output = data.get("output")
+            # ── Node Start ───────────────────────────────────────────
+            if kind == "on_chain_start" and name in MAJOR_NODES:
+                run_id = event.get("run_id")
+                processed = cl.user_session.get("processed_ids") or set()
+                cl.user_session.set("processed_ids", processed)
+                if run_id in processed:
+                    continue
+                processed.add(run_id)
 
-            if name == "planner":
-                step.output = f"**Plan Generated**\n\n{output.get('plan', '')}"
-                await _end_step(step)
+                # Skip the no-op ask_user node in the UI
+                if name == "ask_user":
+                    continue
 
-            elif name == "researcher":
-                await _finish_researcher(step, output)
+                # Parent steps directly under the user message
+                if name in ("writer", "evaluator"):
+                    attempt = 1
 
-            elif name == "writer":
-                step.output = output.get("draft", "")
-                await _end_step(step)
+                # Choose label
+                if name == "writer":
+                    label = _writer_label(attempt)
+                elif name == "evaluator":
+                    label = _evaluator_label(attempt)
+                else:
+                    label = _STEP_LABELS.get(name, name.capitalize())
 
-            elif name == "evaluator":
-                await _finish_evaluator(step, output)
-                attempt += 1
+                step = await _make_step(label, message.id)
+                active_steps[name] = step
 
-            elif name == "output":
-                await _finish_output(step, output)
+            # ── LLM Streaming ────────────────────────────────────────
+            elif kind == "on_chat_model_stream":
+                chunk_content = data["chunk"].content
+                if not chunk_content:
+                    continue
+                node = event.get("metadata", {}).get("langgraph_node")
+                if node and node in active_steps:
+                    await active_steps[node].stream_token(chunk_content)
 
-    # ── After stream: display the final proposal ─────────────────
-    final_state = graph.get_state(config)
-    draft = final_state.values.get("draft", "")
+            # ── Node End ─────────────────────────────────────────────
+            elif kind == "on_chain_end" and name in MAJOR_NODES:
+                # Handle ask_user node — show planner questions
+                if name == "ask_user":
+                    final_state = graph.get_state(config)
+                    questions = final_state.values.get("questions_for_user", [])
+                    if questions:
+                        await _show_planner_questions(questions)
+                        # Mark that the next user message is an answer to planner
+                        # questions, not researcher feedback.
+                        cl.user_session.set("awaiting_planner_answers", True)
+                    continue
 
-    # Only show when graph has fully completed (no pending interrupt)
-    if draft and not final_state.next:
-        elements = [
-            cl.File(
-                name="proposal_final.md",
-                content=draft.encode("utf-8"),
-                display="inline",
-            ),
-        ]
+                if name not in active_steps:
+                    continue
 
-        # Generate PDF — don't let export errors block the message
-        try:
-            elements.append(cl.File(
-                name="proposal_final.pdf",
-                content=_draft_to_pdf_bytes(draft),
-                display="inline",
-            ))
-        except Exception as e:
-            print(f"[WARNING] PDF generation failed: {e}")
+                step = active_steps.pop(name)
+                output = data.get("output")
 
-        # Generate DOCX
-        try:
-            elements.append(cl.File(
-                name="proposal_final.docx",
-                content=_draft_to_docx_bytes(draft),
-                display="inline",
-            ))
-        except Exception as e:
-            print(f"[WARNING] DOCX generation failed: {e}")
+                if name == "planner":
+                    step.output = f"**Plan Generated**\n\n{output.get('plan', '')}"
+                    await _end_step(step)
 
-        await cl.Message(
-            content=f"# 📄 Final Proposal\n\n{draft}\n\n---\n📥 **Download your proposal:** Use the attachments below to download as **PDF** or **DOCX**.",
-            elements=elements,
-        ).send()
+                elif name == "researcher":
+                    await _finish_researcher(step, output)
+
+                elif name == "writer":
+                    step.output = output.get("draft", "")
+                    await _end_step(step)
+
+                elif name == "evaluator":
+                    await _finish_evaluator(step, output)
+                    attempt += 1
+
+                elif name == "output":
+                    await _finish_output(step, output)
+
+        # ── After stream: display the final proposal ─────────────────
+        final_state = graph.get_state(config)
+        draft = final_state.values.get("draft", "")
+
+        # Only show when graph has fully completed (no pending interrupt)
+        if draft and not final_state.next:
+            elements = [
+                cl.File(
+                    name="proposal_final.md",
+                    content=draft.encode("utf-8"),
+                    display="inline",
+                ),
+            ]
+
+            # Generate PDF — don't let export errors block the message
+            try:
+                elements.append(cl.File(
+                    name="proposal_final.pdf",
+                    content=_draft_to_pdf_bytes(draft),
+                    display="inline",
+                ))
+            except Exception as e:
+                print(f"[WARNING] PDF generation failed: {e}")
+
+            # Generate DOCX
+            try:
+                elements.append(cl.File(
+                    name="proposal_final.docx",
+                    content=_draft_to_docx_bytes(draft),
+                    display="inline",
+                ))
+            except Exception as e:
+                print(f"[WARNING] DOCX generation failed: {e}")
+
+            await cl.Message(
+                content=f"# 📄 Final Proposal\n\n{draft}\n\n---\n📥 **Download your proposal:** Use the attachments below to download as **PDF** or **DOCX**.",
+                elements=elements,
+            ).send()
+    finally:
+        cl.user_session.set("is_processing", False)
 
 
 # ── Download helpers ─────────────────────────────────────────────────
@@ -499,13 +523,21 @@ async def _finish_output(step: cl.Step, output: dict) -> None:
 # ── Action callbacks ─────────────────────────────────────────────────
 @cl.action_callback("proceed")
 async def on_proceed(action: cl.Action):
+    if cl.user_session.get("is_processing"):
+        return
     await action.remove()
-    await main(cl.Message(content="Proceed", author="User"))
+    # Send a visible message so it has a valid ID for nesting steps
+    msg = cl.Message(content="✅ Proceeding to write the proposal...", author="User")
+    await msg.send()
+    await main(msg)
 
 
 @cl.action_callback("edit_requirements")
 async def on_edit(action: cl.Action):
+    if cl.user_session.get("is_processing"):
+        return
     await action.remove()
+    cl.user_session.set("intent", "edit")
     await cl.Message(
         content="✏️ **Please type your specific requirements below.**\n\nI'll incorporate them into the proposal draft."
     ).send()
@@ -513,7 +545,10 @@ async def on_edit(action: cl.Action):
 
 @cl.action_callback("reresearch")
 async def on_reresearch(action: cl.Action):
+    if cl.user_session.get("is_processing"):
+        return
     await action.remove()
+    cl.user_session.set("intent", "reresearch")
     await cl.Message(
         content="🔄 **Tell me what to focus the new research on.**\n\nFor example: *\"Focus more on competitor pricing\"* or *\"Research the European market instead\"*."
     ).send()

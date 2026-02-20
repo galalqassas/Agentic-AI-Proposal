@@ -67,7 +67,7 @@ growth percentages, and direct quotes.
 
 _query_prompt = ChatPromptTemplate.from_messages([
     ("system", QUERY_EXTRACTION_PROMPT),
-    ("human", "### Plan\n{plan}"),
+    ("human", "### Plan\n{plan}\n\n### Additional User Feedback\n{user_feedback}"),
 ])
 
 _synthesis_prompt = ChatPromptTemplate.from_messages([
@@ -110,7 +110,11 @@ def researcher_node(state: AgentState) -> dict:
 
     # Step 1: Extract queries using structured output
     structured_llm = llm.with_structured_output(SearchQueries)
-    query_messages = _query_prompt.format_messages(plan=plan)
+    user_feedback = state.get("user_feedback", "")
+    query_messages = _query_prompt.format_messages(
+        plan=plan,
+        user_feedback=user_feedback
+    )
     query_result: SearchQueries = structured_llm.invoke(query_messages)
     queries = query_result.queries[:5]
 
