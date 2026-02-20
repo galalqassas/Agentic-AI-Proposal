@@ -26,7 +26,7 @@ load_dotenv()
 
 # Configuration
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", 5))
-QUALITY_THRESHOLD = 9.0
+QUALITY_THRESHOLD = 7.0
 
 
 def route_after_planner(state: AgentState) -> str:

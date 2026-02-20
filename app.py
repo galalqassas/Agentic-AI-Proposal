@@ -5,7 +5,9 @@ steps nested under parent messages.  Only the final accepted proposal
 appears as a standalone chat message.
 """
 
+import io
 import os
+import re
 from datetime import datetime, timezone
 
 import chainlit as cl
@@ -267,12 +269,147 @@ async def main(message: cl.Message):
                 name="proposal_final.md",
                 content=draft.encode("utf-8"),
                 display="inline",
-            )
+            ),
         ]
+
+        # Generate PDF — don't let export errors block the message
+        try:
+            elements.append(cl.File(
+                name="proposal_final.pdf",
+                content=_draft_to_pdf_bytes(draft),
+                display="inline",
+            ))
+        except Exception as e:
+            print(f"[WARNING] PDF generation failed: {e}")
+
+        # Generate DOCX
+        try:
+            elements.append(cl.File(
+                name="proposal_final.docx",
+                content=_draft_to_docx_bytes(draft),
+                display="inline",
+            ))
+        except Exception as e:
+            print(f"[WARNING] DOCX generation failed: {e}")
+
         await cl.Message(
-            content=f"# 📄 Final Proposal\n\n{draft}",
+            content=f"# 📄 Final Proposal\n\n{draft}\n\n---\n📥 **Download your proposal:** Use the attachments below to download as **PDF** or **DOCX**.",
             elements=elements,
         ).send()
+
+
+# ── Download helpers ─────────────────────────────────────────────────
+
+def _draft_to_pdf_bytes(draft: str) -> bytes:
+    """Convert a markdown draft string to PDF bytes using markdown-pdf (PyMuPDF)."""
+    import tempfile, os
+    from markdown_pdf import MarkdownPdf, Section
+
+    # Professional CSS for clean tables with clear borders
+    # NOTE: MuPDF does not support % values or nth-child selectors
+    css = """
+    body { font-family: sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a1a; }
+    h1 { font-size: 20pt; color: #1a1a1a; margin-top: 18pt; margin-bottom: 8pt; }
+    h2 { font-size: 16pt; color: #2C3E50; margin-top: 16pt; margin-bottom: 6pt; }
+    h3 { font-size: 13pt; color: #34495E; margin-top: 12pt; margin-bottom: 4pt; }
+    p  { margin: 0 0 6pt 0; }
+    hr { border: none; border-top: 1px solid #bbb; margin: 12pt 0; }
+
+    /* ── Tables with clear borders ───────────────── */
+    table {
+        border-collapse: collapse;
+        margin: 10pt 0 14pt 0;
+        font-size: 10pt;
+    }
+    th {
+        background-color: #2C3E50;
+        color: #ffffff;
+        font-weight: bold;
+        text-align: left;
+        padding: 7pt 10pt;
+        border: 1pt solid #1a252f;
+    }
+    td {
+        padding: 6pt 10pt;
+        border: 1pt solid #999999;
+        vertical-align: top;
+    }
+
+    code { font-family: monospace; font-size: 9.5pt; background-color: #f0f0f0; padding: 1pt 3pt; }
+    pre  { background-color: #f0f0f0; padding: 8pt; font-size: 9.5pt; }
+    strong { font-weight: bold; }
+    em { font-style: italic; }
+    """
+
+    pdf = MarkdownPdf(toc_level=0)
+    pdf.add_section(Section(draft, toc=False), user_css=css)
+    pdf.meta["title"] = "Proposal"
+
+    # markdown-pdf requires saving to a file; read bytes back
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        pdf.save(tmp_path)
+        with open(tmp_path, "rb") as f:
+            return f.read()
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+def _draft_to_docx_bytes(draft: str) -> bytes:
+    """Convert a markdown draft string to DOCX bytes using python-docx."""
+    from docx import Document as DocxDocument
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    document = DocxDocument()
+
+    # Tune default style
+    style = document.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(11)
+
+    def _add_run_with_inline(para, text: str):
+        """Parse **bold** / *italic* inline and add runs."""
+        pattern = re.compile(r"(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|([^*`]+))")
+        for m in pattern.finditer(text):
+            if m.group(2):  # **bold**
+                run = para.add_run(m.group(2))
+                run.bold = True
+            elif m.group(3):  # *italic*
+                run = para.add_run(m.group(3))
+                run.italic = True
+            elif m.group(4):  # `code`
+                run = para.add_run(m.group(4))
+                run.font.name = "Courier New"
+            elif m.group(5):  # plain text
+                para.add_run(m.group(5))
+
+    for line in draft.splitlines():
+        stripped = line.rstrip()
+        if stripped.startswith("# "):
+            document.add_heading(stripped[2:], level=1)
+        elif stripped.startswith("## "):
+            document.add_heading(stripped[3:], level=2)
+        elif stripped.startswith("### "):
+            document.add_heading(stripped[4:], level=3)
+        elif stripped.startswith("---"):
+            document.add_paragraph("─" * 60)
+        elif re.match(r"^[-*]\s", stripped):
+            para = document.add_paragraph(style="List Bullet")
+            _add_run_with_inline(para, stripped[2:])
+        elif stripped == "":
+            document.add_paragraph("")
+        else:
+            para = document.add_paragraph()
+            _add_run_with_inline(para, stripped)
+
+    buf = io.BytesIO()
+    document.save(buf)
+    return buf.getvalue()
 
 
 # ── Planner questions helper ─────────────────────────────────────────
