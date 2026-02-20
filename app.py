@@ -345,8 +345,7 @@ def _draft_to_pdf_bytes(draft: str) -> bytes:
     import tempfile, os
     from markdown_pdf import MarkdownPdf, Section
 
-    # Professional CSS for clean tables with clear borders
-    # NOTE: MuPDF does not support % values or nth-child selectors
+    # Aesthetic Minimalist CSS
     css = """
     body { font-family: sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a1a; }
     h1 { font-size: 20pt; color: #1a1a1a; margin-top: 18pt; margin-bottom: 8pt; }
@@ -354,31 +353,13 @@ def _draft_to_pdf_bytes(draft: str) -> bytes:
     h3 { font-size: 13pt; color: #34495E; margin-top: 12pt; margin-bottom: 4pt; }
     p  { margin: 0 0 6pt 0; }
     hr { border: none; border-top: 1px solid #bbb; margin: 12pt 0; }
-
-    /* ── Tables with clear borders ───────────────── */
-    table {
-        border-collapse: collapse;
-        margin: 10pt 0 14pt 0;
-        font-size: 10pt;
-    }
-    th {
-        background-color: #2C3E50;
-        color: #ffffff;
-        font-weight: bold;
-        text-align: left;
-        padding: 7pt 10pt;
-        border: 1pt solid #1a252f;
-    }
-    td {
-        padding: 6pt 10pt;
-        border: 1pt solid #999999;
-        vertical-align: top;
-    }
-
-    code { font-family: monospace; font-size: 9.5pt; background-color: #f0f0f0; padding: 1pt 3pt; }
-    pre  { background-color: #f0f0f0; padding: 8pt; font-size: 9.5pt; }
-    strong { font-weight: bold; }
-    em { font-style: italic; }
+    table { margin: 10pt 0 14pt 0; font-size: 10pt; width: 100%; border-collapse: separate; border-spacing: 0; }
+    thead th { background-color: #f7f9fa; color: #2C3E50; font-weight: bold; text-align: left; padding: 8pt; }
+    thead { border-bottom: 2pt solid #2C3E50; }
+    td { padding: 8pt; border-bottom: 0.5pt solid #e1e4e8; vertical-align: top; }
+    h1, h2, h3 { page-break-after: avoid; }
+    p { orphans: 3; widows: 3; }
+    pre { page-break-inside: avoid; }
     """
 
     pdf = MarkdownPdf(toc_level=0)
