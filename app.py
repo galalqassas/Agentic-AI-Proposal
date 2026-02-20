@@ -8,7 +8,7 @@ appears as a standalone chat message.
 import io
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import chainlit as cl
 from langchain_core.messages import HumanMessage
@@ -42,10 +42,24 @@ def _evaluator_label(n: int) -> str:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+def _get_next_timestamp() -> str:
+    """Return a strictly increasing ISO-8601 UTC timestamp string for the current session."""
+    now = datetime.now(timezone.utc)
+    try:
+        # We only want to enforce strict ordering within the same user session
+        last_dt_str = cl.user_session.get("last_timestamp")
+        if last_dt_str:
+            last_dt = datetime.fromisoformat(last_dt_str)
+            if now <= last_dt:
+                now = last_dt + timedelta(milliseconds=1)
+        cl.user_session.set("last_timestamp", now.isoformat())
+    except Exception:
+        pass
+    return now.isoformat()
+
 def _utc_now() -> str:
     """ISO-8601 UTC timestamp string."""
-    return datetime.now(timezone.utc).isoformat()
-
+    return _get_next_timestamp()
 
 def _score_emoji(score: float) -> str:
     if score >= 9.0:
@@ -84,6 +98,7 @@ async def _make_step(name: str, parent_id: str) -> cl.Step:
     """Create, register, and send a step nested under *parent_id*."""
     step = cl.Step(name=name, type="run")
     step.parent_id = parent_id
+    step.created_at = _get_next_timestamp()
     await step.send()
     return step
 
@@ -317,6 +332,7 @@ async def main(message: cl.Message):
             await cl.Message(
                 content=f"# 📄 Final Proposal\n\n{draft}\n\n---\n📥 **Download your proposal:** Use the attachments below to download as **PDF** or **DOCX**.",
                 elements=elements,
+                created_at=_get_next_timestamp()
             ).send()
     finally:
         cl.user_session.set("is_processing", False)
@@ -447,6 +463,7 @@ async def _show_planner_questions(questions: list[str]) -> None:
             "Please answer the questions above and I'll incorporate "
             "your input into the proposal."
         ),
+        created_at=_get_next_timestamp()
     ).send()
 
 
@@ -487,6 +504,7 @@ async def _finish_researcher(step: cl.Step, output: dict) -> None:
             "or **re-run research** with different focus."
         ),
         actions=actions,
+        created_at=_get_next_timestamp()
     ).send()
 
 
@@ -527,7 +545,7 @@ async def on_proceed(action: cl.Action):
         return
     await action.remove()
     # Send a visible message so it has a valid ID for nesting steps
-    msg = cl.Message(content="✅ Proceeding to write the proposal...", author="User")
+    msg = cl.Message(content="✅ Proceeding to write the proposal...", author="User", created_at=_get_next_timestamp())
     await msg.send()
     await main(msg)
 
@@ -539,7 +557,8 @@ async def on_edit(action: cl.Action):
     await action.remove()
     cl.user_session.set("intent", "edit")
     await cl.Message(
-        content="✏️ **Please type your specific requirements below.**\n\nI'll incorporate them into the proposal draft."
+        content="✏️ **Please type your specific requirements below.**\n\nI'll incorporate them into the proposal draft.",
+        created_at=_get_next_timestamp()
     ).send()
 
 
@@ -550,5 +569,6 @@ async def on_reresearch(action: cl.Action):
     await action.remove()
     cl.user_session.set("intent", "reresearch")
     await cl.Message(
-        content="🔄 **Tell me what to focus the new research on.**\n\nFor example: *\"Focus more on competitor pricing\"* or *\"Research the European market instead\"*."
+        content="🔄 **Tell me what to focus the new research on.**\n\nFor example: *\"Focus more on competitor pricing\"* or *\"Research the European market instead\"*.",
+        created_at=_get_next_timestamp()
     ).send()

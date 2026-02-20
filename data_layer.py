@@ -105,6 +105,8 @@ class JsonDataLayer(BaseDataLayer):
             # Compat: ensure userIdentifier exists (Chainlit requires it)
             if "userIdentifier" not in data and "userId" in data:
                 data["userIdentifier"] = data["userId"]
+            if "steps" in data and isinstance(data["steps"], list):
+                data["steps"].sort(key=lambda s: s.get("createdAt", ""))
         return data or None
 
     async def get_thread_author(self, thread_id: str) -> str:
