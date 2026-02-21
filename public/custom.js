@@ -92,6 +92,38 @@
         }
       });
     });
+
+    // Inject Generic AI Message Avatar
+    document.querySelectorAll('.step[data-step-type="assistant_message"] .ai-message, .message[data-step-type="assistant_message"] .ai-message').forEach(row => {
+      // Prevent duplication or overriding already-injected step avatars
+      if (row.hasAttribute('data-lottie-injected')) return;
+
+      row.setAttribute('data-lottie-injected', 'true');
+
+      // The first child of the .ai-message row is the avatar wrapper span
+      const avatarWrapper = row.firstElementChild;
+      if (!avatarWrapper || avatarWrapper.tagName.toLowerCase() !== 'span') return;
+
+      Array.from(avatarWrapper.querySelectorAll('dotlottie-player')).forEach(p => p.remove());
+
+      Array.from(avatarWrapper.children).forEach(child => {
+        child.style.setProperty('display', 'none', 'important');
+      });
+      
+      const player = document.createElement('dotlottie-player');
+      player.setAttribute('src', `/public/avatars/ai_message.lottie`);
+      player.setAttribute('autoplay', '');
+      player.setAttribute('loop', '');
+      player.style.width = '24px';
+      player.style.height = '24px';
+      player.style.display = 'block';
+      
+      avatarWrapper.style.display = 'flex';
+      avatarWrapper.style.alignItems = 'center';
+      avatarWrapper.style.justifyContent = 'center';
+
+      avatarWrapper.appendChild(player);
+    });
   };
 
   new MutationObserver(() => requestAnimationFrame(inject)).observe(document.body, {childList: true, subtree: true});
