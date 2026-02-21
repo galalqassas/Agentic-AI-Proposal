@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from tavily import TavilyClient
+from concurrent.futures import ThreadPoolExecutor
 
 from agents.models import SearchQueries
 from graph.state import AgentState
@@ -77,20 +78,27 @@ _synthesis_prompt = ChatPromptTemplate.from_messages([
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+def _search_query(client: TavilyClient, q: str) -> list[str]:
+    """Execute a single search query."""
+    try:
+        res = client.search(query=q, max_results=3).get("results", [])
+        return [
+            f"**{r.get('title')}**\n{r.get('content')}\nSource: {r.get('url')}"
+            for r in res
+        ]
+    except Exception as exc:
+        return [f"[Search failed for '{q}': {exc}]"]
+
+
 def _search_tavily(queries: list[str]) -> str:
-    """Run queries through Tavily and return concatenated results."""
+    """Run queries through Tavily concurrently and return concatenated results."""
     client = _get_tavily_client()
     results: list[str] = []
 
-    for q in queries:
-        try:
-            res = client.search(query=q, max_results=3).get("results", [])
-            results.extend(
-                f"**{r.get('title')}**\n{r.get('content')}\nSource: {r.get('url')}"
-                for r in res
-            )
-        except Exception as exc:
-            results.append(f"[Search failed for '{q}': {exc}]")
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(_search_query, client, q) for q in queries]
+        for future in futures:
+            results.extend(future.result())
 
     return "\n---\n".join(results) if results else "No results found."
 
