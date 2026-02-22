@@ -53,6 +53,14 @@ class TestEvaluatorNode:
             "draft": "Test draft",
             "score": 0.0,
             "revision_count": 0,
+            "proposal_type": "",
+            "plan": "",
+            "research_data": "",
+            "search_queries": [],
+            "critique": "",
+            "dimension_scores": {},
+            "user_feedback": "",
+            "questions_for_user": [],
         }
 
         result = evaluator_node(state)
@@ -80,6 +88,14 @@ class TestEvaluatorNode:
             "draft": "Draft",
             "score": 0.0,
             "revision_count": 0,
+            "proposal_type": "",
+            "plan": "",
+            "research_data": "",
+            "search_queries": [],
+            "critique": "",
+            "dimension_scores": {},
+            "user_feedback": "",
+            "questions_for_user": [],
         }
 
         result = evaluator_node(state)
@@ -105,6 +121,14 @@ class TestEvaluatorNode:
             "draft": "Great draft",
             "score": 0.0,
             "revision_count": 0,
+            "proposal_type": "",
+            "plan": "",
+            "research_data": "",
+            "search_queries": [],
+            "critique": "",
+            "dimension_scores": {},
+            "user_feedback": "",
+            "questions_for_user": [],
         }
 
         result = evaluator_node(state)
@@ -127,6 +151,14 @@ class TestEvaluatorNode:
             "draft": "Draft",
             "score": 0.0,
             "revision_count": 2,
+            "proposal_type": "",
+            "plan": "",
+            "research_data": "",
+            "search_queries": [],
+            "critique": "",
+            "dimension_scores": {},
+            "user_feedback": "",
+            "questions_for_user": [],
         }
 
         result = evaluator_node(state)

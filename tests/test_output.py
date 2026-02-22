@@ -29,6 +29,14 @@ class TestOutputNode:
             "proposal_type": "Business",
             "draft": "# Test Proposal\n\nThis is a test.",
             "revision_count": 0,
+            "plan": "",
+            "research_data": "",
+            "search_queries": [],
+            "critique": "",
+            "score": 0.0,
+            "dimension_scores": {},
+            "user_feedback": "",
+            "questions_for_user": [],
         }
         
         output_node(state)

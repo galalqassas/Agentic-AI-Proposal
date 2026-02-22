@@ -24,10 +24,14 @@ class TestWriterNode:
             "proposal_type": "Business",
             "plan": "Test Plan",
             "research_data": "Test Research",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
+            "questions_for_user": [],
         }
 
         result = writer_node(state)
@@ -53,10 +57,14 @@ class TestWriterNode:
             "proposal_type": "UnknownType",
             "plan": "Plan",
             "research_data": "Research",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
+            "questions_for_user": [],
         }
 
         writer_node(state)

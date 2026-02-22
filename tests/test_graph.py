@@ -101,6 +101,7 @@ class TestGraphIntegration:
             "score": 0.0,
             "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -137,6 +138,7 @@ class TestGraphIntegration:
             "score": 0.0,
             "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -188,6 +190,7 @@ class TestGraphIntegration:
             "score": 0.0,
             "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }, {"configurable": {"thread_id": "test-state-flow"}})
 

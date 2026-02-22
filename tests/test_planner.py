@@ -97,10 +97,13 @@ class TestPlannerNode:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -129,10 +132,13 @@ class TestPlannerNode:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -164,10 +170,13 @@ class TestPlannerNode:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -190,10 +199,13 @@ class TestPlannerNode:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -227,10 +239,13 @@ class TestPlannerNode:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 

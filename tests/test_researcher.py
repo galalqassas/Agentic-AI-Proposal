@@ -127,10 +127,13 @@ class TestResearcherNode:
             "proposal_type": "Business",
             "plan": SAMPLE_PLAN,
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -150,10 +153,13 @@ class TestResearcherNode:
             "proposal_type": "",
             "plan": "",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -182,10 +188,13 @@ class TestResearcherNode:
             "proposal_type": "Business",
             "plan": "### Research Needed\n- topic one\n- topic two",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
@@ -214,10 +223,13 @@ class TestResearcherNode:
             "proposal_type": "Business",
             "plan": "### Research Needed\n- topic",
             "research_data": "",
+            "search_queries": [],
             "draft": "",
             "critique": "",
             "score": 0.0,
+            "dimension_scores": {},
             "revision_count": 0,
+            "user_feedback": "",
             "questions_for_user": [],
         }
 
