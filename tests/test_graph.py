@@ -5,7 +5,6 @@ All LLM and Tavily calls are mocked so the test runs offline.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from langchain_core.messages import AIMessage
@@ -143,7 +142,7 @@ class TestGraphIntegration:
         }
 
         config = {"configurable": {"thread_id": "test-planner-questions"}}
-        result = graph.invoke(initial_state, config)
+        graph.invoke(initial_state, config)
 
         # Graph should be interrupted after ask_user — next pending is researcher
         state = graph.get_state(config)
@@ -178,21 +177,24 @@ class TestGraphIntegration:
         mock_tavily_search.return_value = "Raw"
 
         graph = build_graph()
-        result = graph.invoke({
-            "messages": [],
-            "task": "Test",
-            "proposal_type": "",
-            "plan": "",
-            "research_data": "",
-            "search_queries": [],
-            "draft": "",
-            "critique": "",
-            "score": 0.0,
-            "dimension_scores": {},
-            "revision_count": 0,
-            "user_feedback": "",
-            "questions_for_user": [],
-        }, {"configurable": {"thread_id": "test-state-flow"}})
+        result = graph.invoke(
+            {
+                "messages": [],
+                "task": "Test",
+                "proposal_type": "",
+                "plan": "",
+                "research_data": "",
+                "search_queries": [],
+                "draft": "",
+                "critique": "",
+                "score": 0.0,
+                "dimension_scores": {},
+                "revision_count": 0,
+                "user_feedback": "",
+                "questions_for_user": [],
+            },
+            {"configurable": {"thread_id": "test-state-flow"}},
+        )
 
         # The plan should be set by planner, then researcher uses it
         assert result["plan"] != ""

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 import shutil
-import pytest
 
 from agents.output import output_node, OUTPUT_DIR
+
 
 class TestOutputNode:
     """Tests for the output_node."""
@@ -20,7 +20,7 @@ class TestOutputNode:
         """Clean up output dir after test."""
         if os.path.exists(OUTPUT_DIR):
             shutil.rmtree(OUTPUT_DIR)
-            
+
     def test_creates_md_only(self):
         """Should create .md file."""
         state = {
@@ -38,17 +38,17 @@ class TestOutputNode:
             "user_feedback": "",
             "questions_for_user": [],
         }
-        
+
         output_node(state)
-        
+
         # Check files exist
         assert os.path.exists(OUTPUT_DIR)
         files = os.listdir(OUTPUT_DIR)
         md_files = [f for f in files if f.endswith(".md")]
-        
+
         assert len(md_files) == 1
         assert "Business_Proposal" in md_files[0]
-        
+
         # Check MD content
         with open(os.path.join(OUTPUT_DIR, md_files[0]), "r") as f:
             content = f.read()

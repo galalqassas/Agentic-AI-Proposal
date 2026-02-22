@@ -86,9 +86,7 @@ def _format_plan(output: PlannerOutput) -> str:
     """Convert structured output into a readable Markdown plan."""
     facts = "\n".join(f"- {f}" for f in output.key_facts) or "- (none provided)"
     research = "\n".join(f"- {r}" for r in output.research_needed) or "- (none needed)"
-    sections = "\n".join(
-        f"{i}. {s}" for i, s in enumerate(output.proposal_sections, 1)
-    )
+    sections = "\n".join(f"{i}. {s}" for i, s in enumerate(output.proposal_sections, 1))
 
     return (
         f"### Proposal Type\n{output.proposal_type}\n\n"

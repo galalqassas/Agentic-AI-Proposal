@@ -5,7 +5,6 @@ These tests mock the LLM so they run offline and fast.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from langchain_core.messages import AIMessage

@@ -20,9 +20,7 @@ class PlannerOutput(BaseModel):
             "Partnership, or General."
         )
     )
-    key_facts: list[str] = Field(
-        description="Key facts the user has already provided."
-    )
+    key_facts: list[str] = Field(description="Key facts the user has already provided.")
     research_needed: list[str] = Field(
         description="Topics that need external research (web search)."
     )
@@ -57,11 +55,19 @@ class EvaluationOutput(BaseModel):
     """Structured evaluation scores and critique from the Evaluator."""
 
     clarity: float = Field(description="Score 0-10: clear language, easy to read.")
-    persuasiveness: float = Field(description="Score 0-10: compelling arguments, benefits-focused.")
-    completeness: float = Field(description="Score 0-10: addresses all task requirements.")
+    persuasiveness: float = Field(
+        description="Score 0-10: compelling arguments, benefits-focused."
+    )
+    completeness: float = Field(
+        description="Score 0-10: addresses all task requirements."
+    )
     structure: float = Field(description="Score 0-10: logical flow, proper formatting.")
-    specificity: float = Field(description="Score 0-10: customised to client/industry, not generic.")
-    overall_score: float = Field(description="Average of the 5 dimension scores (0-10).")
+    specificity: float = Field(
+        description="Score 0-10: customised to client/industry, not generic."
+    )
+    overall_score: float = Field(
+        description="Average of the 5 dimension scores (0-10)."
+    )
     critique: str = Field(
         default="",
         description=(

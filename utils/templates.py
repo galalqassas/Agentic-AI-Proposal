@@ -44,7 +44,9 @@ projections, sharp competitive positioning, and executive-ready formatting.
 - Lead with the business opportunity and quantified value proposition.
 - Include competitor differentiation in the solution section.
 - Present pricing with clear justification and flexible options if relevant.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -61,7 +63,9 @@ Your proposals emphasise measurable impact and sustainability.
 - Clearly link objectives → activities → outputs → outcomes.
 - Include impact metrics, evaluation methodology, and a sustainability plan.
 - Budget must align precisely with proposed activities.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -78,7 +82,9 @@ depth with accessibility.
 - Address scalability, security, and maintainability explicitly.
 - Present a phased implementation approach with clear milestones.
 - Highlight risk mitigation strategies for technical challenges.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -95,7 +101,9 @@ action-oriented.
 - Quantify ROI and time-to-value with specific numbers.
 - Include social proof (case studies, testimonials, metrics from similar clients).
 - End with a clear, low-friction call to action and next steps.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -111,7 +119,9 @@ scoping, planning, and delivering complex projects on time and budget.
 - Define roles, responsibilities, and governance structure.
 - Address risk management with a risk register summary.
 - Present a realistic timeline with dependencies noted.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -128,7 +138,9 @@ methodologically rigorous.
 - Clearly state hypotheses or research objectives.
 - Detail the methodology, sampling strategy, and analytical framework.
 - Include ethical considerations and limitations.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -145,7 +157,9 @@ win-win narratives.
 - Map complementary strengths and how they combine.
 - Define governance, revenue sharing, and IP considerations.
 - Propose pilot or phased engagement to reduce commitment risk.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 
@@ -161,7 +175,9 @@ regardless of domain.
 - Adapt the formality level to match the apparent audience.
 - Ensure every section adds unique value — no filler content.
 - Close with a clear summary and recommended next steps.
-""" + _COMMON_INSTRUCTIONS + """
+"""
+    + _COMMON_INSTRUCTIONS
+    + """
 Plan:
 {plan}
 

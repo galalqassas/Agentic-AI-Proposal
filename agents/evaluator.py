@@ -19,7 +19,13 @@ from graph.state import AgentState
 from utils.llm import get_llm
 
 # ── Constants ────────────────────────────────────────────────────────
-SCORE_DIMENSIONS = ("Clarity", "Persuasiveness", "Completeness", "Structure", "Specificity")
+SCORE_DIMENSIONS = (
+    "Clarity",
+    "Persuasiveness",
+    "Completeness",
+    "Structure",
+    "Specificity",
+)
 
 EVALUATOR_SYSTEM_PROMPT = """\
 You are an expert Proposal Evaluator with deep experience reviewing \
@@ -66,10 +72,12 @@ def evaluator_node(state: AgentState) -> dict:
     draft = state.get("draft", "")
     task = state.get("task", "")
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", EVALUATOR_SYSTEM_PROMPT),
-        ("human", f"Task: {task}\n\nDraft:\n{draft}"),
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", EVALUATOR_SYSTEM_PROMPT),
+            ("human", f"Task: {task}\n\nDraft:\n{draft}"),
+        ]
+    )
 
     result: EvaluationOutput = structured_llm.invoke(prompt.format_messages())
 
@@ -84,7 +92,9 @@ def evaluator_node(state: AgentState) -> dict:
     current_revisions = state.get("revision_count", 0)
 
     return {
-        "messages": [AIMessage(content=f"Evaluated draft. Score: {result.overall_score}/10")],
+        "messages": [
+            AIMessage(content=f"Evaluated draft. Score: {result.overall_score}/10")
+        ],
         "score": result.overall_score,
         "critique": result.critique,
         "dimension_scores": dimension_scores,

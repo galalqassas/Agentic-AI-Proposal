@@ -77,7 +77,7 @@ def build_graph() -> StateGraph:
         {
             "ask_user": "ask_user",
             "researcher": "researcher",
-        }
+        },
     )
 
     # After user answers, go to researcher
@@ -87,18 +87,12 @@ def build_graph() -> StateGraph:
 
     # Conditional edge
     graph.add_conditional_edges(
-        "evaluator",
-        route_evaluator,
-        {
-            "output": "output",
-            "writer": "writer"
-        }
+        "evaluator", route_evaluator, {"output": "output", "writer": "writer"}
     )
 
     graph.add_edge("output", END)
 
     # Compile with checkpointer and interrupt points for HITL
     return graph.compile(
-        checkpointer=checkpointer,
-        interrupt_after=["ask_user", "researcher"]
+        checkpointer=checkpointer, interrupt_after=["ask_user", "researcher"]
     )

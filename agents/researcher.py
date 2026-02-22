@@ -66,15 +66,19 @@ growth percentages, and direct quotes.
 - Flag any conflicting data points and note recency of information.
 - Keep the brief concise — focus on what directly strengthens the proposal."""
 
-_query_prompt = ChatPromptTemplate.from_messages([
-    ("system", QUERY_EXTRACTION_PROMPT),
-    ("human", "### Plan\n{plan}\n\n### Additional User Feedback\n{user_feedback}"),
-])
+_query_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", QUERY_EXTRACTION_PROMPT),
+        ("human", "### Plan\n{plan}\n\n### Additional User Feedback\n{user_feedback}"),
+    ]
+)
 
-_synthesis_prompt = ChatPromptTemplate.from_messages([
-    ("system", SYNTHESIS_PROMPT),
-    ("human", "### Raw Results\n{raw_results}"),
-])
+_synthesis_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", SYNTHESIS_PROMPT),
+        ("human", "### Raw Results\n{raw_results}"),
+    ]
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -120,8 +124,7 @@ def researcher_node(state: AgentState) -> dict:
     structured_llm = llm.with_structured_output(SearchQueries)
     user_feedback = state.get("user_feedback", "")
     query_messages = _query_prompt.format_messages(
-        plan=plan,
-        user_feedback=user_feedback
+        plan=plan, user_feedback=user_feedback
     )
     query_result: SearchQueries = structured_llm.invoke(query_messages)
     queries = query_result.queries[:5]
@@ -132,11 +135,7 @@ def researcher_node(state: AgentState) -> dict:
     # Step 3: Synthesise (free-form text is fine here)
     synthesis_messages = _synthesis_prompt.format_messages(raw_results=raw_results)
     synthesis = llm.invoke(synthesis_messages)
-    brief = (
-        synthesis.content
-        if hasattr(synthesis, "content")
-        else str(synthesis)
-    )
+    brief = synthesis.content if hasattr(synthesis, "content") else str(synthesis)
 
     return {
         "messages": [AIMessage(content=brief)],

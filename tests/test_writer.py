@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from langchain_core.messages import AIMessage
 from agents.writer import writer_node
+
 
 class TestWriterNode:
     """Tests for the writer_node."""
@@ -38,7 +38,7 @@ class TestWriterNode:
 
         assert result["draft"] == "Generated Draft Content"
         assert "messages" in result
-        
+
         # Verify LLM call
         mock_llm.invoke.assert_called_once()
         # The prompt should contain the plan and research

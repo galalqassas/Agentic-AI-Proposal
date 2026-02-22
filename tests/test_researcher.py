@@ -5,7 +5,6 @@ These tests mock both the LLM and Tavily so they run offline.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from langchain_core.messages import AIMessage

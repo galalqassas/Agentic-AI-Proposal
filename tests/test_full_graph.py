@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import pytest
 from unittest.mock import patch, MagicMock
 
 from langchain_core.messages import AIMessage
@@ -83,13 +82,19 @@ class TestFullPipeline:
         # 1. Planner (structured output)
         mock_p_structured = MagicMock()
         mock_p_structured.invoke.return_value = MOCK_PLANNER
-        mock_planner_llm.return_value.with_structured_output.return_value = mock_p_structured
+        mock_planner_llm.return_value.with_structured_output.return_value = (
+            mock_p_structured
+        )
 
         # 2. Researcher (structured queries + free-form synthesis)
         mock_r_structured = MagicMock()
         mock_r_structured.invoke.return_value = MOCK_QUERIES
-        mock_researcher_llm.return_value.with_structured_output.return_value = mock_r_structured
-        mock_researcher_llm.return_value.invoke.return_value = AIMessage(content=MOCK_BRIEF)
+        mock_researcher_llm.return_value.with_structured_output.return_value = (
+            mock_r_structured
+        )
+        mock_researcher_llm.return_value.invoke.return_value = AIMessage(
+            content=MOCK_BRIEF
+        )
         mock_tavily.return_value = "Raw results"
 
         # 3. Writer (called twice: initial + refinement)
@@ -101,7 +106,9 @@ class TestFullPipeline:
         # 4. Evaluator (structured output, called twice: low score -> high score)
         mock_e_structured = MagicMock()
         mock_e_structured.invoke.side_effect = [MOCK_EVAL_LOW, MOCK_EVAL_HIGH]
-        mock_evaluator_llm.return_value.with_structured_output.return_value = mock_e_structured
+        mock_evaluator_llm.return_value.with_structured_output.return_value = (
+            mock_e_structured
+        )
 
         app = build_graph()
         config = {"configurable": {"thread_id": "test-refinement"}}

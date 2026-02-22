@@ -31,6 +31,7 @@ _lock = asyncio.Lock()
 
 # ── Disk helpers ─────────────────────────────────────────────────────
 
+
 def _ensure_dirs() -> None:
     os.makedirs(_THREADS_DIR, exist_ok=True)
 
@@ -57,6 +58,7 @@ def _now_iso() -> str:
 
 
 # ── Data layer ───────────────────────────────────────────────────────
+
 
 class JsonDataLayer(BaseDataLayer):
     """Persist Chainlit threads to local JSON files."""
@@ -159,7 +161,7 @@ class JsonDataLayer(BaseDataLayer):
                 data = _read_json(os.path.join(_THREADS_DIR, fname))
                 if not data:
                     continue
-                
+
                 # Compat: ensure userIdentifier exists
                 if "userIdentifier" not in data and "userId" in data:
                     data["userIdentifier"] = data["userId"]
@@ -254,9 +256,7 @@ class JsonDataLayer(BaseDataLayer):
     async def create_element(self, element: dict) -> None:
         pass  # Not persisting binary elements for now
 
-    async def get_element(
-        self, thread_id: str, element_id: str
-    ) -> Optional[dict]:
+    async def get_element(self, thread_id: str, element_id: str) -> Optional[dict]:
         return None
 
     async def delete_element(

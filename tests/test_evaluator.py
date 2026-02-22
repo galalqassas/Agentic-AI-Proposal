@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch, MagicMock
 
-from langchain_core.messages import AIMessage
 from agents.evaluator import evaluator_node
 from agents.models import EvaluationOutput
 

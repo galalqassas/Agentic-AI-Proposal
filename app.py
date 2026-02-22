@@ -23,7 +23,9 @@ OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Nodes whose events we handle in the stream
-MAJOR_NODES = frozenset({"planner", "researcher", "writer", "evaluator", "output", "ask_user"})
+MAJOR_NODES = frozenset(
+    {"planner", "researcher", "writer", "evaluator", "output", "ask_user"}
+)
 
 # Human-readable step names
 _STEP_LABELS = {
@@ -57,9 +59,11 @@ def _get_next_timestamp() -> str:
         pass
     return now.isoformat()
 
+
 def _utc_now() -> str:
     """ISO-8601 UTC timestamp string."""
     return _get_next_timestamp()
+
 
 def _score_emoji(score: float) -> str:
     if score >= 9.0:
@@ -107,18 +111,43 @@ async def _make_step(name: str, parent_id: str) -> cl.Step:
 @cl.set_starters
 async def set_starters():
     return [
-        cl.Starter(label="📋 Grant Proposal",       message="Act as Sarah Al-Fayed, Country Director at MSF. Write a grant proposal titled 'Operation Clean Water: Yemen 2026' to the Bill & Melinda Gates Foundation for a $750K emergency cholera intervention. Proposed start date: March 1st, 2026. Contact: s.alfayed@msf.org / +967-1-234567. Provide 5,000 cholera kits, deploy 12 medical staff, and initiate a 6-month budget (80% medical, 20% logistics)."),
-        cl.Starter(label="💼 Business Plan",         message="Act as Alex Chen, Founder of LedgerLoop (Series A Fintech). Write a business plan pitching \"Stripe for Corporate Bonds\" to Sequoia Capital. Use a tech stack based on Rust/Solana; detail a 12-month roadmap (Q1-Q4); and justify a $15M ask broken down into 60% R&D, 30% Ops, and 10% Marketing."),
-        cl.Starter(label="⚙️ Technical Proposal",    message="Act as TechFlow Solutions (AWS Partner). Write a technical proposal for First Midwest Bank to migrate from on-prem mainframes to AWS Cloud. Scale: 1500 VMs and 100TB database. Propose a phased \"6 Rs\" framework; guarantee SOC2 Type II compliance; and detail a zero-downtime cutover strategy."),
-        cl.Starter(label="💰 Sales Proposal",        message="Act as a Salesforce Enterprise AE. Write a closing proposal for Mayo Clinic to adopt Health Cloud. Target a 15% reduction in patient wait times; include a 12-month contract; and present tiered pricing for 1,000 seats including a \"Co-Innovation Lab\" partnership."),
-        cl.Starter(label="📅 Project Proposal",      message="Act as ThoughtWorks (Agile Dev Shop). Write a project proposal to build the MVP for \"NeoBank\". Include a 20-week total project duration with sprint-based delivery for a mobile app and admin dashboard; define the \"Definition of Done\" for the MVP; and use an embedded client product owner model."),
-        cl.Starter(label="🔬 Research Proposal",     message="Act as Pfizer Oncology R&D. Write a Phase 3 Clinical Trial Protocol for Drug-X (Lung Cancer). Study 1,200 patients over 36 months; define primary endpoints for Overall Survival vs. Progression-Free Survival; and detail the global site selection and DSMB governance strategy."),
-        cl.Starter(label="🤝 Partnership Proposal",  message="Act as Spotify Business Development. Write a partnership proposal to Uber. Include cross-platform authentication and weekly co-marketing syncs; propose a 10% revenue share on bookings; and focus on the technical API integration allowing riders to control the car stereo via Spotify."),
-        cl.Starter(label="📝 General Proposal",      message="Act as Jessica Pearson, VP of People. Write an internal proposal to the Board of Directors for a 12-week \"4-Day Work Week\" pilot. KPIs: 20% increase in productivity, 15% reduction in turnover; trial the Monday-Thursday schedule in Engineering; and address accountability measures."),
+        cl.Starter(
+            label="📋 Grant Proposal",
+            message="Act as Sarah Al-Fayed, Country Director at MSF. Write a grant proposal titled 'Operation Clean Water: Yemen 2026' to the Bill & Melinda Gates Foundation for a $750K emergency cholera intervention. Proposed start date: March 1st, 2026. Contact: s.alfayed@msf.org / +967-1-234567. Provide 5,000 cholera kits, deploy 12 medical staff, and initiate a 6-month budget (80% medical, 20% logistics).",
+        ),
+        cl.Starter(
+            label="💼 Business Plan",
+            message='Act as Alex Chen, Founder of LedgerLoop (Series A Fintech). Write a business plan pitching "Stripe for Corporate Bonds" to Sequoia Capital. Use a tech stack based on Rust/Solana; detail a 12-month roadmap (Q1-Q4); and justify a $15M ask broken down into 60% R&D, 30% Ops, and 10% Marketing.',
+        ),
+        cl.Starter(
+            label="⚙️ Technical Proposal",
+            message='Act as TechFlow Solutions (AWS Partner). Write a technical proposal for First Midwest Bank to migrate from on-prem mainframes to AWS Cloud. Scale: 1500 VMs and 100TB database. Propose a phased "6 Rs" framework; guarantee SOC2 Type II compliance; and detail a zero-downtime cutover strategy.',
+        ),
+        cl.Starter(
+            label="💰 Sales Proposal",
+            message='Act as a Salesforce Enterprise AE. Write a closing proposal for Mayo Clinic to adopt Health Cloud. Target a 15% reduction in patient wait times; include a 12-month contract; and present tiered pricing for 1,000 seats including a "Co-Innovation Lab" partnership.',
+        ),
+        cl.Starter(
+            label="📅 Project Proposal",
+            message='Act as ThoughtWorks (Agile Dev Shop). Write a project proposal to build the MVP for "NeoBank". Include a 20-week total project duration with sprint-based delivery for a mobile app and admin dashboard; define the "Definition of Done" for the MVP; and use an embedded client product owner model.',
+        ),
+        cl.Starter(
+            label="🔬 Research Proposal",
+            message="Act as Pfizer Oncology R&D. Write a Phase 3 Clinical Trial Protocol for Drug-X (Lung Cancer). Study 1,200 patients over 36 months; define primary endpoints for Overall Survival vs. Progression-Free Survival; and detail the global site selection and DSMB governance strategy.",
+        ),
+        cl.Starter(
+            label="🤝 Partnership Proposal",
+            message="Act as Spotify Business Development. Write a partnership proposal to Uber. Include cross-platform authentication and weekly co-marketing syncs; propose a 10% revenue share on bookings; and focus on the technical API integration allowing riders to control the car stereo via Spotify.",
+        ),
+        cl.Starter(
+            label="📝 General Proposal",
+            message='Act as Jessica Pearson, VP of People. Write an internal proposal to the Board of Directors for a 12-week "4-Day Work Week" pilot. KPIs: 20% increase in productivity, 15% reduction in turnover; trial the Monday-Thursday schedule in Engineering; and address accountability measures.',
+        ),
     ]
 
 
 # ── Auth & data layer ────────────────────────────────────────────────
+
 
 @cl.header_auth_callback
 async def header_auth_callback(headers: dict) -> cl.User:
@@ -133,10 +162,13 @@ def get_data_layer():
 
 # ── Chat lifecycle ───────────────────────────────────────────────────
 
+
 @cl.on_chat_start
 async def start():
     cl.user_session.set("graph", APP_GRAPH)
-    cl.user_session.set("config", {"configurable": {"thread_id": cl.context.session.id}})
+    cl.user_session.set(
+        "config", {"configurable": {"thread_id": cl.context.session.id}}
+    )
     cl.user_session.set("processed_ids", set())
     cl.user_session.set("awaiting_planner_answers", False)
     cl.user_session.set("is_processing", False)
@@ -173,7 +205,9 @@ async def main(message: cl.Message):
                 cl.user_session.set("awaiting_planner_answers", False)
                 # User answered planner questions — merge into task
                 existing_task = state.values.get("task", "")
-                updated_task = f"{existing_task}\n\nAdditional info from user: {message.content}"
+                updated_task = (
+                    f"{existing_task}\n\nAdditional info from user: {message.content}"
+                )
                 await graph.aupdate_state(
                     config,
                     {"task": updated_task, "questions_for_user": []},
@@ -214,7 +248,7 @@ async def main(message: cl.Message):
 
         # ── Session-scoped tracking ──────────────────────────────────
         active_steps: dict[str, cl.Step] = {}
-        attempt = 1                          # writer/evaluator attempt counter
+        attempt = 1  # writer/evaluator attempt counter
 
         async for event in stream:
             kind = event["event"]
@@ -311,28 +345,32 @@ async def main(message: cl.Message):
 
             # Generate PDF — don't let export errors block the message
             try:
-                elements.append(cl.File(
-                    name="proposal_final.pdf",
-                    content=_draft_to_pdf_bytes(draft),
-                    display="inline",
-                ))
+                elements.append(
+                    cl.File(
+                        name="proposal_final.pdf",
+                        content=_draft_to_pdf_bytes(draft),
+                        display="inline",
+                    )
+                )
             except Exception as e:
                 print(f"[WARNING] PDF generation failed: {e}")
 
             # Generate DOCX
             try:
-                elements.append(cl.File(
-                    name="proposal_final.docx",
-                    content=_draft_to_docx_bytes(draft),
-                    display="inline",
-                ))
+                elements.append(
+                    cl.File(
+                        name="proposal_final.docx",
+                        content=_draft_to_docx_bytes(draft),
+                        display="inline",
+                    )
+                )
             except Exception as e:
                 print(f"[WARNING] DOCX generation failed: {e}")
 
             await cl.Message(
                 content=f"# 📄 Final Proposal\n\n{draft}\n\n---\n📥 **Download your proposal:** Use the attachments below to download as **PDF** or **DOCX**.",
                 elements=elements,
-                created_at=_get_next_timestamp()
+                created_at=_get_next_timestamp(),
             ).send()
     finally:
         cl.user_session.set("is_processing", False)
@@ -340,9 +378,11 @@ async def main(message: cl.Message):
 
 # ── Download helpers ─────────────────────────────────────────────────
 
+
 def _draft_to_pdf_bytes(draft: str) -> bytes:
     """Convert a markdown draft string to PDF bytes using markdown-pdf (PyMuPDF)."""
-    import tempfile, os
+    import tempfile
+    import os
     from markdown_pdf import MarkdownPdf, Section
 
     # Aesthetic Minimalist CSS
@@ -383,8 +423,7 @@ def _draft_to_pdf_bytes(draft: str) -> bytes:
 def _draft_to_docx_bytes(draft: str) -> bytes:
     """Convert a markdown draft string to DOCX bytes using python-docx."""
     from docx import Document as DocxDocument
-    from docx.shared import Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
 
     document = DocxDocument()
 
@@ -444,7 +483,7 @@ async def _show_planner_questions(questions: list[str]) -> None:
             "Please answer the questions above and I'll incorporate "
             "your input into the proposal."
         ),
-        created_at=_get_next_timestamp()
+        created_at=_get_next_timestamp(),
     ).send()
 
 
@@ -469,9 +508,24 @@ async def _finish_researcher(step: cl.Step, output: dict) -> None:
         preview += "\n\n*(…see full brief in the step above)*"
 
     actions = [
-        cl.Action(name="proceed",           value="proceed",    label="✅ Proceed to Write", payload={"value": "proceed"}),
-        cl.Action(name="edit_requirements",  value="edit",       label="✏️ Edit Requirements", payload={"value": "edit"}),
-        cl.Action(name="reresearch",         value="reresearch", label="🔄 Re-research",      payload={"value": "reresearch"}),
+        cl.Action(
+            name="proceed",
+            value="proceed",
+            label="✅ Proceed to Write",
+            payload={"value": "proceed"},
+        ),
+        cl.Action(
+            name="edit_requirements",
+            value="edit",
+            label="✏️ Edit Requirements",
+            payload={"value": "edit"},
+        ),
+        cl.Action(
+            name="reresearch",
+            value="reresearch",
+            label="🔄 Re-research",
+            payload={"value": "reresearch"},
+        ),
     ]
 
     await cl.Message(
@@ -485,7 +539,7 @@ async def _finish_researcher(step: cl.Step, output: dict) -> None:
             "or **re-run research** with different focus."
         ),
         actions=actions,
-        created_at=_get_next_timestamp()
+        created_at=_get_next_timestamp(),
     ).send()
 
 
@@ -526,7 +580,11 @@ async def on_proceed(action: cl.Action):
         return
     await action.remove()
     # Send a visible message so it has a valid ID for nesting steps
-    msg = cl.Message(content="✅ Proceeding to write the proposal...", author="User", created_at=_get_next_timestamp())
+    msg = cl.Message(
+        content="✅ Proceeding to write the proposal...",
+        author="User",
+        created_at=_get_next_timestamp(),
+    )
     await msg.send()
     await main(msg)
 
@@ -539,7 +597,7 @@ async def on_edit(action: cl.Action):
     cl.user_session.set("intent", "edit")
     await cl.Message(
         content="✏️ **Please type your specific requirements below.**\n\nI'll incorporate them into the proposal draft.",
-        created_at=_get_next_timestamp()
+        created_at=_get_next_timestamp(),
     ).send()
 
 
@@ -550,6 +608,6 @@ async def on_reresearch(action: cl.Action):
     await action.remove()
     cl.user_session.set("intent", "reresearch")
     await cl.Message(
-        content="🔄 **Tell me what to focus the new research on.**\n\nFor example: *\"Focus more on competitor pricing\"* or *\"Research the European market instead\"*.",
-        created_at=_get_next_timestamp()
+        content='🔄 **Tell me what to focus the new research on.**\n\nFor example: *"Focus more on competitor pricing"* or *"Research the European market instead"*.',
+        created_at=_get_next_timestamp(),
     ).send()
